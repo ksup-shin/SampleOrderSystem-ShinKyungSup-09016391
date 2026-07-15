@@ -37,6 +37,18 @@ def advance(minutes: float) -> dict | None
   2. 해당 `order_id`의 주문 상태를 `PRODUCING -> CONFIRMED`로 변경.
 - `advance()`는 한 번에 한 항목만 완료시킨다(같은 호출에서 여러 항목이 동시에 끝나는 경우는 다루지 않음 — 다음 `advance()` 호출에서 다음 항목이 이어서 진행).
 
+## 2-1. 화면 표시용 조립 — `production/service.py`의 `production_status()` (UX 2차 검토 반영)
+
+`queue.py`는 `sample_id`만 알고 "시료 이름"/"현재 재고량"은 모른다. 콘솔에 보여줄 정보(PRD 4.6 + 사용성 검토)는 시료 저장소와 조인해야 하므로, `production/service.py`에 순수 함수로 추가한다.
+
+```python
+def production_status(queue_file=..., samples_file=...) -> dict:
+    # {"current": {...} | None, "waiting": [...]}
+```
+
+- `current` (생산 큐 맨 앞 1건, 없으면 `None`): `order_id`, `sample_name`, `order_quantity`, `stock`(현재 재고), `shortage`, `actual_quantity`, `remaining_minutes`(=`total_minutes - elapsed_minutes`, 콘솔에서는 "완료 예정 시간"으로 라벨링).
+- `waiting` (큐의 2번째 항목부터, FIFO 순서 유지): 각 항목에 `sequence`(1부터), `order_id`, `sample_name`, `order_quantity`, `shortage`, `actual_quantity`, `estimated_minutes`(콘솔에서는 "예상 완료 시간"으로 라벨링). `estimated_minutes`는 "현재 처리 중 항목의 남은 시간 + 자신보다 앞선 대기 항목들의 총 생산시간 누적"으로 계산한다(기존 `estimate_wait_minutes()`와 동일한 누적 방식, 항목별로 나눠서 계산).
+
 ## 3. TDD 테스트 목록 (`tests/test_production_queue.py`)
 
 1. `test_enqueue_computes_actual_quantity_with_ceil` — 예: shortage=170, yield_rate=0.92 → `ceil(170/0.92)=185`.
@@ -51,7 +63,7 @@ def advance(minutes: float) -> dict | None
 
 ## 4. 검증 방법 (사람이 직접 확인)
 
-- [ ] Phase 3에서 `PRODUCING`이 된 주문이 `생산 라인 조회`의 "현재 처리 중"에 나오는지. — **보류**: 아직 Phase 3(승인 로직)이 이 큐와 연결되지 않았고, 콘솔 앱(Phase 7)도 없어 지금은 확인 불가. Phase 3/7 완료 후 재검증.
+- [x] Phase 3에서 `PRODUCING`이 된 주문이 `생산 라인 조회`의 "현재 처리 중"에 나오는지. (`production_status()` + 콘솔 앱 구동으로 확인 — 승인 후 "[생산 중]" 표에 해당 주문이 시료 이름/재고량/부족량/실생산량/완료예정시간과 함께 표시됨)
 - [x] 부족분/실생산량 계산이 `ceil(부족분/수율)` 공식과 일치하는지 손계산으로 검증. (`170/0.92 = 184.78... → ceil = 185`를 직접 계산해 테스트 값과 일치 확인)
 - [x] 여러 건 승인 후 대기 목록이 승인한 순서(FIFO)대로 나오는지. (자동화 테스트 `test_list_queue_preserves_fifo_order`로 검증 — 3건을 순서대로 enqueue한 뒤 그 순서 그대로 반환됨을 확인)
 - [x] "진행" 명령(또는 tick 트리거)을 반복 입력해 진행율/남은 시간이 줄어들다가, 완료 시 주문 상태가 `CONFIRMED`로 바뀌고 재고가 늘어나는지, 다음 대기 항목이 처리 중으로 넘어가는지 확인. (`production/service.py`의 `advance_production()`으로 오케스트레이션 구현. 재현: 재고 30/부족분 170/수율 0.92 → `advance(1)`은 미완료(재고 불변), `advance(10000)`은 완료되어 `actual_quantity=185`만큼 재고가 215로 증가하고 주문이 `CONFIRMED`로 전환, 큐가 빔을 확인. 콘솔 화면에서의 진행율/남은시간 "표시"는 Phase 7에서 재검증.)

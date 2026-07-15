@@ -87,13 +87,23 @@ def test_samples_register_prompts_each_field_in_order_and_persists(files):
     controller.dispatch("1")
 
     assert controller.view.prompts == [
-        "Sample ID: ", "Name: ", "Avg Production Time: ", "Yield Rate: ", "Initial Stock: ",
+        "시료 ID: ", "이름: ", "평균 생산시간(분): ", "수율: ", "초기 재고: ",
     ]
     samples = controller.model.list_samples()
     assert samples == [{
         "id": "S-001", "name": "실리콘 웨이퍼-8인치",
         "avg_production_time": 0.5, "yield_rate": 0.92, "stock": 100,
     }]
+
+
+def test_samples_search_prompts_with_sample_name_label(files):
+    controller = make_controller(files, inputs=["실리콘"])
+    controller.model.register_sample("S-001", "실리콘 웨이퍼-8인치", 0.5, 0.9, initial_stock=10)
+    controller.model.go_to("samples")
+
+    controller.dispatch("3")
+
+    assert controller.view.prompts == ["시료 이름: "]
 
 
 def test_reserve_prompts_each_field_and_creates_order(files):
@@ -103,7 +113,7 @@ def test_reserve_prompts_each_field_and_creates_order(files):
 
     controller.dispatch("1")
 
-    assert controller.view.prompts == ["Sample ID: ", "Customer: ", "Quantity: "]
+    assert controller.view.prompts == ["시료 ID: ", "고객명: ", "수량: "]
     order = controller.model.list_reserved_orders()[0]
     assert order["sample_id"] == "S-001"
     assert order["customer"] == "고객"
@@ -124,6 +134,36 @@ def test_approval_approve_lists_reserved_orders_then_prompts_index_and_approves(
     remaining_ids = [o["id"] for o in controller.model.list_reserved_orders()]
     assert order2["id"] not in remaining_ids
     assert order1["id"] in remaining_ids
+
+
+def test_approval_approve_shows_order_and_status_transition_after_processing(files):
+    controller = make_controller(files, inputs=["1"])
+    controller.model.register_sample("S-001", "A", 0.5, 0.9, initial_stock=5)
+    order = controller.model.reserve_order("S-001", "C1", 50)  # 재고 부족 -> PRODUCING
+    controller.model.go_to("approval")
+
+    controller.dispatch("2")
+
+    combined = "\n".join(controller.view.messages)
+    assert order["id"] in combined
+    assert "RESERVED" in combined
+    assert "PRODUCING" in combined
+    assert "→" in combined
+
+
+def test_approval_reject_shows_order_and_status_transition_after_processing(files):
+    controller = make_controller(files, inputs=["1"])
+    controller.model.register_sample("S-001", "A", 0.5, 0.9, initial_stock=100)
+    order = controller.model.reserve_order("S-001", "C1", 10)
+    controller.model.go_to("approval")
+
+    controller.dispatch("3")
+
+    combined = "\n".join(controller.view.messages)
+    assert order["id"] in combined
+    assert "RESERVED" in combined
+    assert "REJECTED" in combined
+    assert "→" in combined
 
 
 def test_approval_approve_rejects_out_of_range_index(files):
@@ -151,6 +191,22 @@ def test_shipment_ship_lists_confirmed_orders_then_prompts_index_and_ships(files
     assert controller.model.list_shippable_orders() == []
 
 
+def test_shipment_ship_shows_order_and_status_transition_after_processing(files):
+    controller = make_controller(files, inputs=["1"])
+    controller.model.register_sample("S-001", "A", 0.5, 0.9, initial_stock=100)
+    order = controller.model.reserve_order("S-001", "C1", 10)
+    controller.model.approve_order(order["id"])
+    controller.model.go_to("shipment")
+
+    controller.dispatch("2")
+
+    combined = "\n".join(controller.view.messages)
+    assert order["id"] in combined
+    assert "CONFIRMED" in combined
+    assert "RELEASE" in combined
+    assert "→" in combined
+
+
 def test_production_advance_prompts_minutes(files):
     controller = make_controller(files, inputs=["5"])
     controller.model.register_sample("S-001", "A", 0.8, 0.92, initial_stock=30)
@@ -163,3 +219,21 @@ def test_production_advance_prompts_minutes(files):
     assert controller.view.prompts == ["진행 시간(분): "]
     item = controller.model.list_queue()[0]
     assert item["elapsed_minutes"] == 5
+
+
+def test_production_list_shows_current_and_waiting_tables_separately(files):
+    controller = make_controller(files, inputs=[])
+    controller.model.register_sample("S-001", "A", 1.0, 1.0, initial_stock=0)
+    order1 = controller.model.reserve_order("S-001", "C1", 10)
+    order2 = controller.model.reserve_order("S-001", "C2", 20)
+    controller.model.approve_order(order1["id"])
+    controller.model.approve_order(order2["id"])
+    controller.model.go_to("production")
+
+    controller.dispatch("1")
+
+    combined = "\n".join(controller.view.messages)
+    assert order1["id"] in combined
+    assert order2["id"] in combined
+    assert "완료 예정 시간" in combined
+    assert "예상 완료 시간" in combined

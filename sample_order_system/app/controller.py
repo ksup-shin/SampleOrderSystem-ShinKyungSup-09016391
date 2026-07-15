@@ -1,9 +1,10 @@
 """SampleOrderController — 화면별 번호 선택 메뉴를 라우팅하고,
-값이 필요한 동작은 필드마다 순차로 view.input()을 호출해 받는다."""
+값이 필요한 동작은 필드마다 순차로 view.input()을 호출해 받는다.
+목록/현황 출력은 formatting.py의 표 함수를 거쳐 한 번에 출력한다."""
 
 import mvc
 
-from .formatting import format_sample_row, format_queue_row
+from . import formatting
 
 _MAIN_MENU_SCREENS = {
     "1": "samples",
@@ -13,10 +14,6 @@ _MAIN_MENU_SCREENS = {
     "5": "production",
     "6": "shipment",
 }
-
-
-def _format_order_row(order):
-    return f"{order['id']} | {order['sample_id']} | {order['customer']} | {order['quantity']} | {order['status']}"
 
 
 class SampleOrderController(mvc.Controller):
@@ -52,12 +49,11 @@ class SampleOrderController(mvc.Controller):
     def _prompt(self, label):
         return self.view.input(f"{label}: ").strip()
 
-    def _select_from(self, records, empty_message):
+    def _select_order(self, records, empty_message):
         if not records:
             self.view.show_message(empty_message)
             return None
-        for index, record in enumerate(records, start=1):
-            self.view.show_message(f"[{index}] {_format_order_row(record)}")
+        self.view.show_message(formatting.format_indexed_orders_table(records))
         choice = self._prompt("번호")
         try:
             index = int(choice) - 1
@@ -66,6 +62,10 @@ class SampleOrderController(mvc.Controller):
         if not (0 <= index < len(records)):
             raise ValueError("목록에 없는 번호입니다.")
         return records[index]["id"]
+
+    def _show_status_transition(self, before_status, order):
+        self.view.show_message(formatting.format_orders_table([order]))
+        self.view.show_message(f"상태 변경: {before_status} → {order['status']}")
 
     # -- main --
     def _dispatch_main(self, command):
@@ -82,11 +82,11 @@ class SampleOrderController(mvc.Controller):
         if command == "0":
             return self._back_to_main()
         if command == "1":
-            sample_id = self._prompt("Sample ID")
-            name = self._prompt("Name")
-            avg_time = self._prompt("Avg Production Time")
-            yield_rate = self._prompt("Yield Rate")
-            stock = self._prompt("Initial Stock")
+            sample_id = self._prompt("시료 ID")
+            name = self._prompt("이름")
+            avg_time = self._prompt("평균 생산시간(분)")
+            yield_rate = self._prompt("수율")
+            stock = self._prompt("초기 재고")
             self.model.register_sample(
                 sample_id, name, float(avg_time), float(yield_rate),
                 int(stock) if stock else 0,
@@ -94,13 +94,11 @@ class SampleOrderController(mvc.Controller):
             self.view.show_message("시료가 등록되었습니다.")
             return True
         if command == "2":
-            for sample in self.model.list_samples():
-                self.view.show_message(format_sample_row(sample))
+            self.view.show_message(formatting.format_samples_table(self.model.list_samples()))
             return True
         if command == "3":
-            keyword = self._prompt("Keyword")
-            for sample in self.model.search_samples(keyword):
-                self.view.show_message(format_sample_row(sample))
+            keyword = self._prompt("시료 이름")
+            self.view.show_message(formatting.format_samples_table(self.model.search_samples(keyword)))
             return True
         self.view.show_error("잘못된 번호입니다.")
         return True
@@ -110,9 +108,9 @@ class SampleOrderController(mvc.Controller):
         if command == "0":
             return self._back_to_main()
         if command == "1":
-            sample_id = self._prompt("Sample ID")
-            customer = self._prompt("Customer")
-            quantity = self._prompt("Quantity")
+            sample_id = self._prompt("시료 ID")
+            customer = self._prompt("고객명")
+            quantity = self._prompt("수량")
             order = self.model.reserve_order(sample_id, customer, int(quantity))
             self.view.show_message(f"예약 완료: {order['id']} ({order['status']})")
             return True
@@ -124,26 +122,27 @@ class SampleOrderController(mvc.Controller):
         if command == "0":
             return self._back_to_main()
         if command == "1":
-            for order in self.model.list_reserved_orders():
-                self.view.show_message(_format_order_row(order))
+            self.view.show_message(
+                formatting.format_orders_table(self.model.list_reserved_orders())
+            )
             return True
         if command == "2":
-            order_id = self._select_from(
+            order_id = self._select_order(
                 self.model.list_reserved_orders(), "접수된 주문이 없습니다.",
             )
             if order_id is None:
                 return True
             order = self.model.approve_order(order_id)
-            self.view.show_message(f"승인 완료: {order['id']} -> {order['status']}")
+            self._show_status_transition("RESERVED", order)
             return True
         if command == "3":
-            order_id = self._select_from(
+            order_id = self._select_order(
                 self.model.list_reserved_orders(), "접수된 주문이 없습니다.",
             )
             if order_id is None:
                 return True
             order = self.model.reject_order(order_id)
-            self.view.show_message(f"거절 완료: {order['id']} -> {order['status']}")
+            self._show_status_transition("RESERVED", order)
             return True
         self.view.show_error("잘못된 번호입니다.")
         return True
@@ -153,11 +152,10 @@ class SampleOrderController(mvc.Controller):
         if command == "0":
             return self._back_to_main()
         if command == "1":
-            self.view.show_message(str(self.model.order_counts()))
+            self.view.show_message(formatting.format_order_counts_table(self.model.order_counts()))
             return True
         if command == "2":
-            for level in self.model.stock_levels():
-                self.view.show_message(str(level))
+            self.view.show_message(formatting.format_stock_levels_table(self.model.stock_levels()))
             return True
         self.view.show_error("잘못된 번호입니다.")
         return True
@@ -167,8 +165,17 @@ class SampleOrderController(mvc.Controller):
         if command == "0":
             return self._back_to_main()
         if command == "1":
-            for item in self.model.list_queue():
-                self.view.show_message(format_queue_row(item))
+            status = self.model.production_status()
+            if status["current"] is None:
+                self.view.show_message("현재 생산 중인 주문이 없습니다.")
+            else:
+                self.view.show_message("[생산 중]")
+                self.view.show_message(formatting.format_production_current_table(status["current"]))
+            if status["waiting"]:
+                self.view.show_message("[대기 중]")
+                self.view.show_message(formatting.format_production_waiting_table(status["waiting"]))
+            else:
+                self.view.show_message("대기 중인 주문이 없습니다.")
             return True
         if command == "2":
             minutes = self._prompt("진행 시간(분)")
@@ -186,17 +193,18 @@ class SampleOrderController(mvc.Controller):
         if command == "0":
             return self._back_to_main()
         if command == "1":
-            for order in self.model.list_shippable_orders():
-                self.view.show_message(_format_order_row(order))
+            self.view.show_message(
+                formatting.format_orders_table(self.model.list_shippable_orders())
+            )
             return True
         if command == "2":
-            order_id = self._select_from(
+            order_id = self._select_order(
                 self.model.list_shippable_orders(), "출고 가능한 주문이 없습니다.",
             )
             if order_id is None:
                 return True
             order = self.model.ship_order(order_id)
-            self.view.show_message(f"출고 완료: {order['id']} -> {order['status']}")
+            self._show_status_transition("CONFIRMED", order)
             return True
         self.view.show_error("잘못된 번호입니다.")
         return True

@@ -90,6 +90,11 @@ class SampleOrderModel(mvc.Model):
         self.notify("production_advanced", result)
         return result
 
+    def production_status(self):
+        return production_service.production_status(
+            queue_file=self.queue_file, samples_file=self.samples_file,
+        )
+
     # -- 출고 --
     def list_shippable_orders(self):
         return shipment.list_shippable_orders(orders_file=self.orders_file)
