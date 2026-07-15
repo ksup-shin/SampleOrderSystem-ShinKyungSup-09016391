@@ -1,6 +1,6 @@
 """시료(Sample) CRUD — poc_json 위의 얇은 도메인 래퍼."""
 
-from poc_json import create_item, read_all, read_by_id
+from poc_json import create_item, read_all, read_by_id, update_item
 
 from ..paths import SAMPLES_FILE
 
@@ -42,3 +42,11 @@ def search_samples(keyword, file_path=SAMPLES_FILE):
 
 def get_sample(sample_id, file_path=SAMPLES_FILE):
     return read_by_id(file_path, sample_id)
+
+
+def adjust_stock(sample_id, delta, file_path=SAMPLES_FILE):
+    sample = read_by_id(file_path, sample_id)
+    new_stock = sample["stock"] + delta
+    if new_stock < 0:
+        raise ValueError("재고는 0 미만이 될 수 없습니다.")
+    return update_item(file_path, sample_id, {"stock": new_stock})

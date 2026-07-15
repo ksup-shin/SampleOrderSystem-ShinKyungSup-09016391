@@ -5,6 +5,7 @@ from sample_order_system.samples.repository import (
     list_samples,
     search_samples,
     get_sample,
+    adjust_stock,
 )
 
 
@@ -79,3 +80,26 @@ def test_search_samples_returns_empty_when_no_match(samples_file):
 
 def test_get_sample_returns_none_when_missing(samples_file):
     assert get_sample("S-999", file_path=samples_file) is None
+
+
+def test_adjust_stock_increases_stock_with_positive_delta(samples_file):
+    register_sample("S-001", "A", 0.5, 0.9, initial_stock=100, file_path=samples_file)
+
+    updated = adjust_stock("S-001", 50, file_path=samples_file)
+
+    assert updated["stock"] == 150
+
+
+def test_adjust_stock_decreases_stock_with_negative_delta(samples_file):
+    register_sample("S-001", "A", 0.5, 0.9, initial_stock=100, file_path=samples_file)
+
+    updated = adjust_stock("S-001", -30, file_path=samples_file)
+
+    assert updated["stock"] == 70
+
+
+def test_adjust_stock_rejects_when_result_would_be_negative(samples_file):
+    register_sample("S-001", "A", 0.5, 0.9, initial_stock=10, file_path=samples_file)
+
+    with pytest.raises(ValueError):
+        adjust_stock("S-001", -20, file_path=samples_file)
