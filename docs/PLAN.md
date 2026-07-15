@@ -6,6 +6,18 @@
 
 > **개발 방법론 — TDD 적용**: Phase 0 이후의 모든 프로덕션 코드(신규 기능, 버그 수정, 리팩터링 포함)는 `test-driven-development` 스킬(`.claude/skills/test-driven-development/SKILL.md`)을 적용하여 개발합니다. 즉, 각 Phase의 작업 항목마다 (1) 실패하는 pytest 테스트를 먼저 작성 → (2) 실패하는 것을 직접 확인 → (3) 테스트를 통과시키는 최소한의 코드 작성 → (4) 리팩터링 순서로 진행하고, 아래 각 Phase의 "검증 방법" 체크리스트는 이 TDD 사이클의 테스트 케이스 목록으로도 활용합니다.
 
+> **Phase별 상세 설계 문서**: 각 Phase의 모듈 구조, 데이터 스키마, 검증 규칙, TDD 테스트 목록은 `docs/phases/phaseN-*.md`에 정리되어 있습니다. 구현 시작 전 해당 Phase 문서를 먼저 확인하세요.
+> - [Phase 0 — 프로젝트 뼈대 & 데이터 스키마](phases/phase0-foundation.md)
+> - [Phase 1 — 시료 도메인](phases/phase1-samples.md)
+> - [Phase 2 — 주문 예약](phases/phase2-order-reserve.md)
+> - [Phase 3 — 주문 승인/거절](phases/phase3-order-approval.md)
+> - [Phase 4 — 생산 라인(FIFO)](phases/phase4-production-line.md)
+> - [Phase 5 — 출고 처리](phases/phase5-shipment.md)
+> - [Phase 6 — 모니터링](phases/phase6-monitoring.md)
+> - [Phase 7 — 메인 메뉴 & 앱 통합](phases/phase7-main-menu.md)
+> - [Phase 8 — 더미 데이터 연동](phases/phase8-dummy-data.md)
+> - [Phase 9 — 테스트 정리 & 마감](phases/phase9-finalize.md)
+
 ## 전체 로드맵 요약
 
 | Phase | 목표 | 주요 산출물 |

@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .idea/
 *.pdf
+.pytest_cache/
+data/*.json
