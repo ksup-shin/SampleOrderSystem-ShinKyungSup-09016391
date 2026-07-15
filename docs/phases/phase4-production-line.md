@@ -54,4 +54,4 @@ def advance(minutes: float) -> dict | None
 - [ ] Phase 3에서 `PRODUCING`이 된 주문이 `생산 라인 조회`의 "현재 처리 중"에 나오는지. — **보류**: 아직 Phase 3(승인 로직)이 이 큐와 연결되지 않았고, 콘솔 앱(Phase 7)도 없어 지금은 확인 불가. Phase 3/7 완료 후 재검증.
 - [x] 부족분/실생산량 계산이 `ceil(부족분/수율)` 공식과 일치하는지 손계산으로 검증. (`170/0.92 = 184.78... → ceil = 185`를 직접 계산해 테스트 값과 일치 확인)
 - [x] 여러 건 승인 후 대기 목록이 승인한 순서(FIFO)대로 나오는지. (자동화 테스트 `test_list_queue_preserves_fifo_order`로 검증 — 3건을 순서대로 enqueue한 뒤 그 순서 그대로 반환됨을 확인)
-- [ ] "진행" 명령(또는 tick 트리거)을 반복 입력해 진행율/남은 시간이 줄어들다가, 완료 시 주문 상태가 `CONFIRMED`로 바뀌고 재고가 늘어나는지, 다음 대기 항목이 처리 중으로 넘어가는지 확인. — **보류**: `advance()` 자체의 진행/완료/승격 동작은 `tests/test_production_queue.py`로 검증했지만, 주문 상태(`PRODUCING→CONFIRMED`)와 시료 재고 반영은 Phase 3/7에서 Model 계층이 `advance()`의 반환값을 받아 처리해야 하는 부분이라 아직 연결되지 않음.
+- [x] "진행" 명령(또는 tick 트리거)을 반복 입력해 진행율/남은 시간이 줄어들다가, 완료 시 주문 상태가 `CONFIRMED`로 바뀌고 재고가 늘어나는지, 다음 대기 항목이 처리 중으로 넘어가는지 확인. (`production/service.py`의 `advance_production()`으로 오케스트레이션 구현. 재현: 재고 30/부족분 170/수율 0.92 → `advance(1)`은 미완료(재고 불변), `advance(10000)`은 완료되어 `actual_quantity=185`만큼 재고가 215로 증가하고 주문이 `CONFIRMED`로 전환, 큐가 빔을 확인. 콘솔 화면에서의 진행율/남은시간 "표시"는 Phase 7에서 재검증.)
