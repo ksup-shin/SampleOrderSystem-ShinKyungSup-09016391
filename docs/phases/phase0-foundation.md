@@ -88,11 +88,11 @@ PLAN.md Phase 6에서 보류했던 결정. **시료별로 `RESERVED`/`PRODUCING`
 
 Phase 0 자체는 로직이 거의 없는 스캐폴딩이라 테스트는 최소한으로 둔다.
 
-- [ ] `tests/test_paths.py`: 데이터 디렉토리 상수가 존재하고, `poc_json`으로 없는 파일을 읽으면 빈 리스트가 나오는지(이미 `poc_json`이 보장하는 동작이지만, 우리 경로 상수와 결합했을 때도 성립하는지) 확인하는 스모크 테스트 1개.
-- [ ] `pyproject.toml` 또는 `pytest.ini`에 `testpaths = ["tests"]` 설정.
-- [ ] `requirements.txt`(또는 `requirements-dev.txt`)에 `pytest` 고정.
+- [x] `tests/test_paths.py`: 데이터 디렉토리 상수가 존재하고, `poc_json`으로 없는 파일을 읽으면 빈 리스트가 나오는지(이미 `poc_json`이 보장하는 동작이지만, 우리 경로 상수와 결합했을 때도 성립하는지) 확인하는 스모크 테스트 1개.
+- [x] `pyproject.toml` 또는 `pytest.ini`에 `testpaths = ["tests"]` 설정.
+- [x] `requirements.txt`(또는 `requirements-dev.txt`)에 `pytest` 고정.
 
 ## 6. 검증 방법 (사람이 직접 확인)
 
-- [ ] `.venv/Scripts/python.exe -m pytest`가 에러 없이 실행되고, Phase 0 스모크 테스트가 통과하는지 확인.
-- [ ] `python -c "import sample_order_system"`이 에러 없이 실행되는지 확인.
+- [x] `.venv/Scripts/python.exe -m pytest`가 에러 없이 실행되고, Phase 0 스모크 테스트가 통과하는지 확인.
+- [x] `python -c "import sample_order_system"`이 에러 없이 실행되는지 확인.

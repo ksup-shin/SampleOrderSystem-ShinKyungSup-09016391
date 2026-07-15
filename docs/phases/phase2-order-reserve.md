@@ -35,6 +35,6 @@ def get_order(order_id: str) -> dict | None
 
 ## 3. 검증 방법 (사람이 직접 확인)
 
-- [ ] Phase 1에서 등록한 시료 ID로 주문(고객 "삼성전자 파운드리", 수량 200) 생성 → 주문번호 + `RESERVED` 상태 확인.
-- [ ] 없는 시료 ID(`S-999`)로 주문 시도 → 에러로 거부.
-- [ ] `poc_json.admin_tool data/orders.json`의 `list`로 저장된 내용 확인.
+- [x] Phase 1에서 등록한 시료 ID로 주문(고객 "삼성전자 파운드리", 수량 200) 생성 → 주문번호 + `RESERVED` 상태 확인. (콘솔 앱 완성 전이라 `sample_order_system.samples/orders.repository` 함수를 직접 호출해 확인 — 결과: `ORD-000001`, 상태 `RESERVED`)
+- [x] 없는 시료 ID(`S-999`)로 주문 시도 → 에러로 거부. (`ValueError` 발생 확인)
+- [x] 저장된 내용 확인. (`data/orders.json`을 직접 읽어 한글 필드까지 정확히 저장된 것을 확인. `poc_json.admin_tool`을 Windows 콘솔에서 실행하면 cp949 코드페이지 때문에 한글이 깨져 "보이지만", 파일 자체의 UTF-8 데이터는 정상입니다.)
